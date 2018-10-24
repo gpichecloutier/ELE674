@@ -133,8 +133,33 @@ void *MotorTask ( void *ptr ) {
 /* A faire! */
 /* Tache qui transmet les nouvelles valeurs de vitesse */
 /* à chaque moteur à interval régulier (5 ms).         */
+
+	int file = (int) file;
+
+	uint8_t reply[256];
+	uint8_t cmd[5];
+
+	// Valeur des PWM
+	uint16_t pwm0 = 0;
+	uint16_t pwm1 = 0xFF;
+	uint16_t pwm2 = 0;
+	uint16_t pwm3 = 0;
+	uint16_t pwm4 = 0;
+
 	while (MotorActivated) {
 //		DOSOMETHING();
+
+		// Gabriel
+		// Bâtit la trame de communication
+		cmd[0] = 0x20 | ((pwm0 & 0x1FF) >> 4);
+		cmd[1] = ((pwm1 & 0x1FF) << 4) | ((pwm2 & 0x1FF) >> 5);
+		cmd[2] = ((pwm2 & 0x1FF) << 3) | ((pwm3 & 0x1FF) >> 6);
+		cmd[3] = ((pwm3 & 0x1FF) << 2) | ((pwm4 & 0x1FF) >> 7);
+		cmd[4] = ((pwm4 & 0x1FF) << 1);
+
+		// Envoie la trame sur le port série
+		motor_cmd(file, cmd, reply, 256);
+
 	}
 	pthread_exit(0); /* exit thread */
 }
@@ -147,6 +172,22 @@ int MotorInit (MotorStruct *Motor) {
 /* fonction MotorPortInit() et créer la Tâche MotorTask()  */
 /* qui va s'occuper des mises à jours des moteurs en cours */ 
 /* d'exécution.                                            */
+
+	// MotorPortInit
+	MotorPortInit(Motor);
+
+	// Créer sémaphore pour cadencer
+	sem_init(&MotorTimerSem, 0, 1);
+
+	// Voir MavlinkInit et AttitudeInit pour un exemple
+	// Créer la tâche Moteur avec pthread
+	pthread_create(&(Motor->MotorThread), NULL, MotorTask, Motor->file);
+
+	// spinlock pour motor_struct
+	pthread_spin_init(Motor->MotorLock, PTHREAD_PROCESS_PRIVATE);
+
+
+
 	return 0;
 }
 
@@ -157,7 +198,9 @@ int MotorStart (void) {
 /* Ici, vous devriez démarrer la mise à jour des moteurs (MotorTask).    */ 
 /* Tout le système devrait être prêt à faire leur travail et il ne reste */
 /* plus qu'à tout démarrer.                                              */
-	return retval;
+//	return retval;
+
+	return 0;
 }
 
 
