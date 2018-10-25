@@ -220,13 +220,21 @@ int main(int argc, char *argv[]) {
 		ch = tolower(getchar_nonblock());
 
 //		À faire pour tester les moteurs avec le clavier.
-//		switch (ch){
-//		case "+":
-//			augmente les moteurs(pwm);
-//			break;
-//		case "-":
-//			diminue les moteurs (pwm);
-//		}
+		pthread_spin_lock(&(Motor.MotorLock));
+		switch (ch){
+		case '+':
+			Motor.pwm[0] += 1;
+			Motor.pwm[1] += 1;
+			Motor.pwm[2] += 1;
+			Motor.pwm[3] += 1;
+			break;
+		case '-':
+			Motor.pwm[0] -= 1;
+			Motor.pwm[1] -= 1;
+			Motor.pwm[2] -= 1;
+			Motor.pwm[3] -= 1;
+		}
+		pthread_spin_unlock(&(Motor.MotorLock));
 	}
 
 //	MavlinkStop(&Mavlink);
