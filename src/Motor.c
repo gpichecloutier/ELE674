@@ -142,6 +142,19 @@ void *MotorTask ( void *ptr ) {
 /* A faire! */
 /* Tache qui transmet les nouvelles valeurs de vitesse */
 /* à chaque moteur à interval régulier (5 ms).         */
+
+	int file = (int) file;
+
+	uint8_t reply[256];
+	uint8_t cmd[5];
+
+	// Valeur des PWM
+	uint16_t pwm0 = 0;
+	uint16_t pwm1 = 0xFF;
+	uint16_t pwm2 = 0;
+	uint16_t pwm3 = 0;
+	uint16_t pwm4 = 0;
+
 	MotorStruct *motor_data;
 	motor_data = (MotorStruct*)ptr;
 	while (MotorActivated) {
@@ -149,7 +162,20 @@ void *MotorTask ( void *ptr ) {
 		pthread_spin_lock(&(motor_data->MotorLock));
 		SetPWM(motor_data->file, motor_data->pwm[0], motor_data->pwm[1], motor_data->pwm[2], motor_data->pwm[3]);
 		pthread_spin_unlock(&(motor_data->MotorLock));
-		printf("Motor sped updated.");
+		printf("Motor speed updated.");
+//		DOSOMETHING();
+
+		// Gabriel
+		// Bâtit la trame de communication
+		cmd[0] = 0x20 | ((pwm0 & 0x1FF) >> 4);
+		cmd[1] = ((pwm1 & 0x1FF) << 4) | ((pwm2 & 0x1FF) >> 5);
+		cmd[2] = ((pwm2 & 0x1FF) << 3) | ((pwm3 & 0x1FF) >> 6);
+		cmd[3] = ((pwm3 & 0x1FF) << 2) | ((pwm4 & 0x1FF) >> 7);
+		cmd[4] = ((pwm4 & 0x1FF) << 1);
+
+		// Envoie la trame sur le port série
+		motor_cmd(file, cmd, reply, 256);
+
 	}
 	pthread_exit(0); /* exit thread */
 }
@@ -187,6 +213,7 @@ int MotorInit (MotorStruct *Motor) {
 	pthread_attr_setschedparam(&attr, &param);
 
 	MotorPortInit(Motor);
+	// Créer la tâche Moteur avec pthread
 	pthread_create(&(Motor->MotorThread), &attr, MotorTask, Motor);
 
 	pthread_attr_destroy(&attr);
@@ -221,3 +248,4 @@ int MotorStop (MotorStruct *Motor) {
 	sem_destroy(&MotorTimerSem);
 	return 0;
 }
+
