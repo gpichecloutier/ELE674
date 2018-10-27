@@ -249,6 +249,9 @@ int ControlStart (void) {
 /* prêt à faire leur travail et il ne reste plus qu'à tout démarrer.      */
 //	return retval;
 
+	printf("ControlStart\n");
+
+
 	return 0;
 }
 

@@ -49,6 +49,7 @@ int SensorsStart (void) {
 /* Ici, vous devriez démarrer l'acquisition sur les capteurs.        */ 
 /* Les capteurs ainsi que tout le reste du système devrait être      */
 /* prêt à faire leur travail et il ne reste plus qu'à tout démarrer. */
+	printf("Sensor Start\n");
 	return 0;
 }
 
@@ -175,8 +176,8 @@ int SensorsLogsInit (SensorStruct SensorTab[]) {
 
 int SensorsLogsStart (void) {
 	LogActivated = 1;
-	pthread_barrier_wait(&(LogStartBarrier));
-	pthread_barrier_destroy(&LogStartBarrier);
+//	pthread_barrier_wait(&(LogStartBarrier));
+//	pthread_barrier_destroy(&LogStartBarrier);
 	printf("%s NavLog démarré\n", __FUNCTION__);
 
 	return 0;

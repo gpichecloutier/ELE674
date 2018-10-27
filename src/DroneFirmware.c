@@ -1,10 +1,10 @@
 /*
  ============================================================================
  Name        : ARDrone.c
- Author      : Bruno De Kelper
+ Author      : Gabriel Piché Cloutier, Francis Jeanneau
  Version     :
  Copyright   : Your copyright notice
- Description : Hello World in C, Ansi-style
+ Description : Code principal du Drone. Basé sur le code de Bruno De Kelper.
  ============================================================================
  */
 
@@ -72,9 +72,16 @@ void SigTimerHandler (int signo) {
 //		if ((Period % MAVLINK_STATUS_PERIOD) == 0)
 //			sem_post(&MavlinkStatusTimerSem);
 //	}
+
+	if (MotorActivated) {
+			if ((Period % MOTOR_PERIOD) == 0)
+				sem_post(&MotorTimerSem);
+	}
+
 	if ((Period % MAIN_PERIOD) == 0)
 		sem_post (&MainTimerSem);
 	Period = (Period + 1) % MAX_PERIOD;
+
 }
 
 
@@ -216,23 +223,30 @@ int main(int argc, char *argv[]) {
 
 	ch = 0;
 	while (ch != 'q') {
+
 		sem_wait(&MainTimerSem);
+
 		ch = tolower(getchar_nonblock());
 
 //		À faire pour tester les moteurs avec le clavier.
 		pthread_spin_lock(&(Motor.MotorLock));
+
 		switch (ch){
 		case '+':
-			Motor.pwm[0] += 1;
-			Motor.pwm[1] += 1;
-			Motor.pwm[2] += 1;
-			Motor.pwm[3] += 1;
+			if (Motor.pwm[1] < 500) {
+				Motor.pwm[0] += 50;
+				Motor.pwm[1] += 50;
+				Motor.pwm[2] += 50;
+				Motor.pwm[3] += 50;
+			}
 			break;
 		case '-':
-			Motor.pwm[0] -= 1;
-			Motor.pwm[1] -= 1;
-			Motor.pwm[2] -= 1;
-			Motor.pwm[3] -= 1;
+			if (Motor.pwm[1] > 0) {
+				Motor.pwm[0] -= 50;
+				Motor.pwm[1] -= 50;
+				Motor.pwm[2] -= 50;
+				Motor.pwm[3] -= 50;
+			}
 		}
 		pthread_spin_unlock(&(Motor.MotorLock));
 	}

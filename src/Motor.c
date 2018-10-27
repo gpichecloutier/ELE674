@@ -2,7 +2,7 @@
  * Motor.c
  *
  *  Created on: 12 sept. 2013
- *      Author: bruno
+ *      Author: Gabriel Piché Cloutier, Francis Jeanneau
  */
 
 
@@ -15,14 +15,19 @@ extern int		MotorActivated;
 
 pthread_barrier_t 	MotorStartBarrier;
 
-void SetPWM(uint16_t mot_filedesc, uint16_t pwm1, uint16_t pwm2, uint16_t pwm3, uint16_t pwm4) {
-	uint8_t cmd[5];
+void SetPWM(MotorStruct *Motor, uint8_t *cmd) {
+	uint16_t pwm1 = Motor->pwm[0];
+	uint16_t pwm2 = Motor->pwm[1];
+	uint16_t pwm3 = Motor->pwm[2];
+	uint16_t pwm4 = Motor->pwm[3];
+
 	cmd[0] = 0x20 | ((pwm1&0x1ff)>>4);
 	cmd[1] = ((pwm1&0x1ff)<<4) | ((pwm2&0x1ff)>>5);
 	cmd[2] = ((pwm2&0x1ff)<<3) | ((pwm3&0x1ff)>>6);
 	cmd[3] = ((pwm3&0x1ff)<<2) | ((pwm4&0x1ff)>>7);
 	cmd[4] = ((pwm4&0x1ff)<<1);
-	write(mot_filedesc, cmd, 5);
+
+//	write(mot_filedesc, cmd, 5);
 }
 
 int gpio_set (int nr, int val)  {
@@ -143,39 +148,22 @@ void *MotorTask ( void *ptr ) {
 /* Tache qui transmet les nouvelles valeurs de vitesse */
 /* à chaque moteur à interval régulier (5 ms).         */
 
-	int file = (int) file;
-
-	uint8_t reply[256];
 	uint8_t cmd[5];
-
-	// Valeur des PWM
-	uint16_t pwm0 = 0;
-	uint16_t pwm1 = 0xFF;
-	uint16_t pwm2 = 0;
-	uint16_t pwm3 = 0;
-	uint16_t pwm4 = 0;
-
 	MotorStruct *motor_data;
 	motor_data = (MotorStruct*)ptr;
-	while (MotorActivated) {
-		usleep(5000);
-		pthread_spin_lock(&(motor_data->MotorLock));
-		SetPWM(motor_data->file, motor_data->pwm[0], motor_data->pwm[1], motor_data->pwm[2], motor_data->pwm[3]);
-		pthread_spin_unlock(&(motor_data->MotorLock));
-		printf("Motor speed updated.");
-//		DOSOMETHING();
 
-		// Gabriel
+	pthread_barrier_wait(&(MotorStartBarrier));
+
+	while (MotorActivated) {
+		sem_wait(&MotorTimerSem);
+
 		// Bâtit la trame de communication
-		cmd[0] = 0x20 | ((pwm0 & 0x1FF) >> 4);
-		cmd[1] = ((pwm1 & 0x1FF) << 4) | ((pwm2 & 0x1FF) >> 5);
-		cmd[2] = ((pwm2 & 0x1FF) << 3) | ((pwm3 & 0x1FF) >> 6);
-		cmd[3] = ((pwm3 & 0x1FF) << 2) | ((pwm4 & 0x1FF) >> 7);
-		cmd[4] = ((pwm4 & 0x1FF) << 1);
+		pthread_spin_lock(&(motor_data->MotorLock));
+		SetPWM(motor_data, cmd);
+		pthread_spin_unlock(&(motor_data->MotorLock));
 
 		// Envoie la trame sur le port série
-		motor_cmd(file, cmd, reply, 256);
-
+		write(motor_data->file, cmd, 5);
 	}
 	pthread_exit(0); /* exit thread */
 }
@@ -196,23 +184,29 @@ int MotorInit (MotorStruct *Motor) {
 	pthread_attr_t		attr;
 	struct sched_param	param;
 	int					minprio, maxprio;
+	int i;
 
 	sem_init(&MotorTimerSem, 0, 0);
-	pthread_barrier_init(&MotorStartBarrier, NULL, 1);
+	pthread_barrier_init(&MotorStartBarrier, NULL, 2);
 	pthread_spin_init(&(Motor->MotorLock), PTHREAD_PROCESS_PRIVATE);
 
 	pthread_attr_init(&attr);
 	pthread_attr_setinheritsched(&attr, PTHREAD_EXPLICIT_SCHED);
-	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
 	pthread_attr_setscope(&attr, PTHREAD_SCOPE_SYSTEM);
 	minprio = sched_get_priority_min(POLICY);
 	maxprio = sched_get_priority_max(POLICY);
 	pthread_attr_setschedpolicy(&attr, POLICY);
-	param.sched_priority = maxprio - (maxprio - minprio)/4;
+	param.sched_priority = minprio;
 	pthread_attr_setstacksize(&attr, THREADSTACK);
 	pthread_attr_setschedparam(&attr, &param);
 
 	MotorPortInit(Motor);
+
+	for(i=0; i < 4; i++) {
+		Motor->pwm[i] = 0;
+	}
+
 	// Créer la tâche Moteur avec pthread
 	pthread_create(&(Motor->MotorThread), &attr, MotorTask, Motor);
 
@@ -228,6 +222,7 @@ int MotorStart (void) {
 /* Ici, vous devriez démarrer la mise à jour des moteurs (MotorTask).    */
 /* Tout le système devrait être prêt à faire leur travail et il ne reste */
 /* plus qu'à tout démarrer.                                       */
+
 	MotorActivated = 1;
 	pthread_barrier_wait(&(MotorStartBarrier));
 	pthread_barrier_destroy(&MotorStartBarrier);

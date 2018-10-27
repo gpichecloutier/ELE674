@@ -135,8 +135,8 @@ int AttitudeInit (AttitudeStruct AttitudeTab[NUM_SENSOR]) {
 
 int AttitudeStart (void) {
 	AttitudeActivated = 1;
-	pthread_barrier_wait(&(AttitudeStartBarrier));
-	pthread_barrier_destroy(&AttitudeStartBarrier);
+//	pthread_barrier_wait(&(AttitudeStartBarrier));
+//	pthread_barrier_destroy(&AttitudeStartBarrier);
 	printf("%s Attitude démarré\n", __FUNCTION__);
 
 	return 0;
