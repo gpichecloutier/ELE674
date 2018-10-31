@@ -2,7 +2,8 @@
  * Sensor.c
  *
  *  Created on: 12 sept. 2013
- *      Author: bruno
+ *      Author: Gabriel Piché Cloutier, Francis Jeanneau
+ *
  */
 
 #include "Sensor.h"
@@ -27,8 +28,60 @@ void *SensorTask ( void *ptr ) {
 /* A faire! */
 /* Tache qui sera instancié pour chaque sensor. Elle s'occupe d'aller */
 /* chercher les donnees du sensor.                                    */
+
+	int i;
+	uint32_t last_timestamp;
+	uint32_t new_timestamp;
+
+	SensorStruct *sensor_data;
+	sensor_data = (SensorStruct*)ptr;
+
+	pthread_barrier_wait(&(SensorStartBarrier));
+
 	while (SensorsActivated) {
-//		DOSOMETHING();
+		pthread_mutex_lock(&(sensor_data->DataSampleMutex));
+		pthread_spin_lock(&(sensor_data->DataLock));
+
+		last_timestamp = sensor_data->RawData->timestamp_n + (sensor_data->RawData->timestamp_s * (10^9));
+
+		if ((read(sensor_data->File, &(sensor_data->RawData), sizeof(sensor_data))) == sizeof(sensor_data)){
+			// Les données ont été lues et placées dans "RawData"
+			// Incrémenter l'index
+			sensor_data->DataIdx++;
+
+			// Conversion du RawData en Data
+			switch (sensor_data->type) {
+			case ACCELEROMETRE :	for (i = 0; i < 3; i++)
+										sensor_data->Data->Data[i] = ((sensor_data->RawData->data[i] - sensor_data->Param->centerVal) * sensor_data->Param->Conversion);
+									break;
+			case GYROSCOPE :		for (i = 0; i < 3; i++)
+										sensor_data->Data->Data[i] = ((sensor_data->RawData->data[i] - sensor_data->Param->centerVal) * sensor_data->Param->Conversion);
+									break;
+			case SONAR :			sensor_data->Data->Data[0] = ((sensor_data->RawData->data[0] - sensor_data->Param->centerVal) * sensor_data->Param->Conversion);
+									break;
+			case BAROMETRE :		sensor_data->Data->Data[0] = ((sensor_data->RawData->data[0] - sensor_data->Param->centerVal) * sensor_data->Param->Conversion);
+									break;
+			case MAGNETOMETRE :		for (i = 0; i < 3; i++)
+										sensor_data->Data->Data[i] = (((double)sensor_data->RawData->data[i] - sensor_data->Param->centerVal) * sensor_data->Param->Conversion);
+									break;
+			}
+
+			// Calcul du TimeDelay
+			new_timestamp = sensor_data->RawData->timestamp_n + (sensor_data->RawData->timestamp_s * (10^9));
+			sensor_data->Data->TimeDelay = new_timestamp - last_timestamp;
+
+
+			pthread_cond_broadcast(&(sensor_data->DataNewSampleCondVar));
+			pthread_spin_unlock(&(sensor_data->DataLock));
+			pthread_mutex_unlock(&(sensor_data->DataSampleMutex));
+
+
+		} else {
+			//La structure n'a pas été copiée en entier
+
+
+		}
+
 	}
 	pthread_exit(0); /* exit thread */
 }
@@ -40,6 +93,66 @@ int SensorsInit (SensorStruct SensorTab[NUM_SENSOR]) {
 /* C'est-à-dire de faire les initialisations requises, telles que    */
 /* ouvrir les fichiers des capteurs, et de créer les Tâches qui vont */
 /* s'occuper de réceptionner les échantillons des capteurs.          */
+
+	int retval;
+	pthread_attr_t      attr;
+	struct sched_param	param;
+	int i;
+
+	pthread_attr_init(&attr);
+	pthread_attr_setinheritsched(&attr, PTHREAD_EXPLICIT_SCHED);
+	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+	pthread_attr_setscope(&attr, PTHREAD_SCOPE_PROCESS);
+	pthread_attr_setschedpolicy(&attr, POLICY);
+	param.sched_priority = sched_get_priority_min(POLICY);
+	pthread_attr_setstacksize(&attr, THREADSTACK);
+	pthread_attr_setschedparam(&attr, &param);
+
+	printf("Initialisation des Sensors...\n");
+
+	// Initiatisation de la barrière
+	pthread_barrier_init(&SensorStartBarrier, NULL, NUM_SENSOR + 1);
+
+	for (i = ACCELEROMETRE; i <= MAGNETOMETRE; i++) {
+		// Ouverture des pilotes des capteurs
+		if((retval = SensorTab[i].File  = open(SensorTab[i].DevName, O_RDONLY)) < 0) {
+			printf("%s : Impossible d'ouvrir le pilote de %s => retval = %d\n", __FUNCTION__, SensorTab[i].Name, retval);
+			return -1;
+		}
+
+		// Initialisation des tâches
+		if((retval = pthread_create(&(SensorTab[i].SensorThread), &attr, SensorTask, (void *) &SensorTab[i])) != 0) {
+			printf("%s : Impossible de créer la Tâche de %s => retval = %d\n", __FUNCTION__, SensorTab[i].Name, retval);
+			return -1;
+		}
+
+		// Initialisation des spinlock
+		if((retval = pthread_spin_init(&(SensorTab[i].DataLock), PTHREAD_PROCESS_PRIVATE)) != 0) {
+			printf("%s : Impossible de créer le spinlock de %s => retval = %d\n", __FUNCTION__, SensorTab[i].Name, retval);
+			return -1;
+		}
+
+		// Initialisation des mutex
+		if((retval = pthread_mutex_init(&(SensorTab[i].DataSampleMutex), NULL)) != 0) {
+			printf("%s : Impossible de créer le mutex de %s => retval = %d\n", __FUNCTION__, SensorTab[i].Name, retval);
+			return -1;
+		}
+
+		// Initialisation des variables de condition
+		if((retval = pthread_cond_init(&(SensorTab[i].DataNewSampleCondVar), NULL)) != 0) {
+			printf("%s : Impossible de créer la variable de condition de %s => retval = %d\n", __FUNCTION__, SensorTab[i].Name, retval);
+			return -1;
+		}
+
+		// Initialisation des timestamps
+		SensorTab[i].RawData->timestamp_n = 0;
+		SensorTab[i].RawData->timestamp_s = 0;
+	}
+
+	pthread_attr_destroy(&attr);
+
+	printf("Tout a été crééééyeees...\n");
+
 	return 0;
 };
 
@@ -49,7 +162,12 @@ int SensorsStart (void) {
 /* Ici, vous devriez démarrer l'acquisition sur les capteurs.        */ 
 /* Les capteurs ainsi que tout le reste du système devrait être      */
 /* prêt à faire leur travail et il ne reste plus qu'à tout démarrer. */
-	printf("Sensor Start\n");
+	SensorsActivated = 1;
+
+	pthread_barrier_wait(&(SensorStartBarrier));
+	pthread_barrier_destroy(&SensorStartBarrier);
+	printf("%s Sensors démarrés\n", __FUNCTION__);
+
 	return 0;
 }
 
@@ -58,6 +176,17 @@ int SensorsStop (SensorStruct SensorTab[NUM_SENSOR]) {
 /* A faire! */
 /* Ici, vous devriez défaire ce que vous avez fait comme travail dans */
 /* SensorsInit() (toujours verifier les retours de chaque call)...    */ 
+	int16_t	i;
+
+	SensorsActivated = 0;
+	for (i = ACCELEROMETRE; i <= MAGNETOMETRE; i++) {
+		pthread_cancel(SensorTab[i].SensorThread);
+		pthread_spin_destroy(&(SensorTab[i].DataSampleMutex));
+		pthread_mutex_destroy(&(SensorTab[i].DataSampleMutex));
+		pthread_cond_destroy(&(SensorTab[i].DataNewSampleCondVar));
+//		sem_destroy(&MotorTimerSem);
+	}
+
 	return 0;
 }
 
@@ -176,8 +305,8 @@ int SensorsLogsInit (SensorStruct SensorTab[]) {
 
 int SensorsLogsStart (void) {
 	LogActivated = 1;
-//	pthread_barrier_wait(&(LogStartBarrier));
-//	pthread_barrier_destroy(&LogStartBarrier);
+	pthread_barrier_wait(&(LogStartBarrier));
+	pthread_barrier_destroy(&LogStartBarrier);
 	printf("%s NavLog démarré\n", __FUNCTION__);
 
 	return 0;

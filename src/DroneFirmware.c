@@ -74,8 +74,8 @@ void SigTimerHandler (int signo) {
 //	}
 
 	if (MotorActivated) {
-			if ((Period % MOTOR_PERIOD) == 0)
-				sem_post(&MotorTimerSem);
+		if ((Period % MOTOR_PERIOD) == 0)
+			sem_post(&MotorTimerSem);
 	}
 
 	if ((Period % MAIN_PERIOD) == 0)
@@ -195,10 +195,10 @@ int main(int argc, char *argv[]) {
 
 	if ((retval = MotorInit(&Motor)) < 0)
 		return EXIT_FAILURE;
-//	if ((retval = SensorsLogsInit(SensorTab)) < 0)
-//		return EXIT_FAILURE;
-//	if ((retval = SensorsInit(SensorTab)) < 0)
-//		return EXIT_FAILURE;
+	if ((retval = SensorsLogsInit(SensorTab)) < 0)
+		return EXIT_FAILURE;
+	if ((retval = SensorsInit(SensorTab)) < 0)
+		return EXIT_FAILURE;
 //	if ((retval = AttitudeInit(AttitudeTab)) < 0)
 //		return EXIT_FAILURE;
 //	if ((retval = MavlinkInit(&Mavlink, &AttitudeDesire, &AttitudeMesure, IPAddress)) < 0)
@@ -258,8 +258,8 @@ int main(int argc, char *argv[]) {
 //	ControlStop(&Control);
 
 	MotorStop(&Motor);
-//	SensorsLogsStop(SensorTab);
-//	SensorsStop(SensorTab);
+	SensorsLogsStop(SensorTab);
+	SensorsStop(SensorTab);
 //	AttitudeStop(AttitudeTab);
 
 	StopTimer();
