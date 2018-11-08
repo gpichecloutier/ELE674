@@ -33,8 +33,11 @@ void *SensorTask ( void *ptr ) {
 	uint32_t last_timestamp;
 	uint32_t new_timestamp;
 
-	SensorStruct *sensor_data;
-	sensor_data = (SensorStruct*)ptr;
+	SensorStruct *sensor_struct;
+	sensor_struct = (SensorStruct*)ptr;
+	SensorData sensor_data_temp;
+	SensorRawData sensor_raw_data_temp;
+
 
 	pthread_barrier_wait(&(SensorStartBarrier));
 
@@ -42,40 +45,43 @@ void *SensorTask ( void *ptr ) {
 //	j = 0;
 
 	while (SensorsActivated) {
-		pthread_mutex_lock(&(sensor_data->DataSampleMutex));
-		pthread_spin_lock(&(sensor_data->DataLock));
 
-		last_timestamp = sensor_data->RawData->timestamp_n + (sensor_data->RawData->timestamp_s * (10^9));
+//		pthread_mutex_lock(&(sensor_data->DataSampleMutex));
+//		pthread_spin_lock(&(sensor_data->DataLock));
 
-		if ((read(sensor_data->File, sensor_data->RawData, sizeof(*(sensor_data->RawData)))) == sizeof(*(sensor_data->RawData))){
+//		last_timestamp = sensor_raw_data_temp.timestamp_n + (sensor_raw_data_temp.timestamp_s * (10^9));
+		last_timestamp = sensor_struct->RawData[sensor_struct->DataIdx]->timestamp_n + (sensor_struct->RawData[sensor_struct->DataIdx]->timestamp_s * (10^9));
+
+		// Le read est bloquant alors pas de spin lock
+		if ((read(sensor_struct->File, &sensor_raw_data_temp, sizeof(sensor_raw_data_temp))) == sizeof(sensor_raw_data_temp)){
 			// Les données ont été lues et placées dans "RawData"
-			// Incrémenter l'index
-			sensor_data->DataIdx++;
+
 
 			// Conversion du RawData en Data
-			switch (sensor_data->type) {
+			// EST-CE QU'ON LOCK POUR LIRE LE TYPE ET CENTERVAL ET AUTRES???
+			switch (sensor_struct->type) {
 			case ACCELEROMETRE :	for (i = 0; i < 3; i++)
-										sensor_data->Data->Data[i] = ((sensor_data->RawData->data[i] - sensor_data->Param->centerVal) * sensor_data->Param->Conversion);
+										sensor_data_temp.Data[i] = ((sensor_raw_data_temp.data[i] - sensor_struct->Param->centerVal) * sensor_struct->Param->Conversion);
 									break;
 
 			case GYROSCOPE :		for (i = 0; i < 3; i++)
-										sensor_data->Data->Data[i] = ((sensor_data->RawData->data[i] - sensor_data->Param->centerVal) * sensor_data->Param->Conversion);
+										sensor_data_temp.Data[i] = ((sensor_raw_data_temp.data[i] - sensor_struct->Param->centerVal) * sensor_struct->Param->Conversion);
 									break;
 
-			case SONAR :			sensor_data->Data->Data[0] = ((sensor_data->RawData->data[0] - sensor_data->Param->centerVal) * sensor_data->Param->Conversion);
+			case SONAR :			sensor_data_temp.Data[0] = ((sensor_raw_data_temp.data[0] - sensor_struct->Param->centerVal) * sensor_struct->Param->Conversion);
 									break;
 
-			case BAROMETRE :		sensor_data->Data->Data[0] = ((sensor_data->RawData->data[0] - sensor_data->Param->centerVal) * sensor_data->Param->Conversion);
+			case BAROMETRE :		sensor_data_temp.Data[0] = ((sensor_raw_data_temp.data[0] - sensor_struct->Param->centerVal) * sensor_struct->Param->Conversion);
 									break;
 
 			case MAGNETOMETRE :		for (i = 0; i < 3; i++)
-										sensor_data->Data->Data[i] = (((double)sensor_data->RawData->data[i] - sensor_data->Param->centerVal) * sensor_data->Param->Conversion);
+										sensor_data_temp.Data[i] = (((double)sensor_raw_data_temp.data[i] - sensor_struct->Param->centerVal) * sensor_struct->Param->Conversion);
 									break;
 			}
 
 			// Calcul du TimeDelay
-			new_timestamp = sensor_data->RawData->timestamp_n + (sensor_data->RawData->timestamp_s * (10^9));
-			sensor_data->Data->TimeDelay = new_timestamp - last_timestamp;
+			new_timestamp = sensor_raw_data_temp.timestamp_n + (sensor_raw_data_temp.timestamp_s * (10^9));
+			sensor_data_temp.TimeDelay = new_timestamp - last_timestamp;
 
 //			if (j > 200) {
 //				printf("Valeur du sensor %s en x : %lf, en y : %lf, en z : %lf\n", sensor_data->Name, sensor_data->Data->Data[0], sensor_data->Data->Data[1], sensor_data->Data->Data[2]);
@@ -84,9 +90,22 @@ void *SensorTask ( void *ptr ) {
 //
 //			j++;
 
-			pthread_cond_broadcast(&(sensor_data->DataNewSampleCondVar));
-			pthread_spin_unlock(&(sensor_data->DataLock));
-			pthread_mutex_unlock(&(sensor_data->DataSampleMutex));
+			// On "lock" pour assigner le data au data_temp...
+			pthread_mutex_lock(&(sensor_struct->DataSampleMutex));
+			pthread_spin_lock(&(sensor_struct->DataLock));
+
+			// 1. Incrémenter l'index
+			sensor_struct->DataIdx = (sensor_struct->DataIdx + 1) % DATABUFSIZE;
+
+			// 2. Copier les données
+			memcpy((void *) &(sensor_data_temp),     (void *) (sensor_struct->Data[sensor_struct->DataIdx]),    sizeof(sensor_data_temp));
+			memcpy((void *) &(sensor_raw_data_temp), (void *) (sensor_struct->RawData[sensor_struct->DataIdx]), sizeof(sensor_raw_data_temp));
+
+			pthread_cond_broadcast(&(sensor_struct->DataNewSampleCondVar));
+			pthread_spin_unlock(&(sensor_struct->DataLock));
+			pthread_mutex_unlock(&(sensor_struct->DataSampleMutex));
+
+
 
 
 		} else {
@@ -197,7 +216,6 @@ int SensorsStop (SensorStruct SensorTab[NUM_SENSOR]) {
 		pthread_spin_destroy(&(SensorTab[i].DataSampleMutex));
 		pthread_mutex_destroy(&(SensorTab[i].DataSampleMutex));
 		pthread_cond_destroy(&(SensorTab[i].DataNewSampleCondVar));
-//		sem_destroy(&MotorTimerSem);
 	}
 
 	return 0;

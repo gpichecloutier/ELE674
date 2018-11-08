@@ -199,8 +199,8 @@ int main(int argc, char *argv[]) {
 		return EXIT_FAILURE;
 	if ((retval = SensorsInit(SensorTab)) < 0)
 		return EXIT_FAILURE;
-//	if ((retval = AttitudeInit(AttitudeTab)) < 0)
-//		return EXIT_FAILURE;
+	if ((retval = AttitudeInit(AttitudeTab)) < 0)
+		return EXIT_FAILURE;
 //	if ((retval = MavlinkInit(&Mavlink, &AttitudeDesire, &AttitudeMesure, IPAddress)) < 0)
 //		return EXIT_FAILURE;
 //	if ((retval = ControlInit(&Control)) < 0)
@@ -260,7 +260,7 @@ int main(int argc, char *argv[]) {
 	MotorStop(&Motor);
 	SensorsLogsStop(SensorTab);
 	SensorsStop(SensorTab);
-//	AttitudeStop(AttitudeTab);
+	AttitudeStop(AttitudeTab);
 
 	StopTimer();
 
