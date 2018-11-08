@@ -29,7 +29,7 @@ void *SensorTask ( void *ptr ) {
 /* Tache qui sera instancié pour chaque sensor. Elle s'occupe d'aller */
 /* chercher les donnees du sensor.                                    */
 
-	int i;
+	int i, j;
 	uint32_t last_timestamp;
 	uint32_t new_timestamp;
 
@@ -38,13 +38,16 @@ void *SensorTask ( void *ptr ) {
 
 	pthread_barrier_wait(&(SensorStartBarrier));
 
+	// Pour printer
+//	j = 0;
+
 	while (SensorsActivated) {
 		pthread_mutex_lock(&(sensor_data->DataSampleMutex));
 		pthread_spin_lock(&(sensor_data->DataLock));
 
 		last_timestamp = sensor_data->RawData->timestamp_n + (sensor_data->RawData->timestamp_s * (10^9));
 
-		if ((read(sensor_data->File, &(sensor_data->RawData), sizeof(sensor_data))) == sizeof(sensor_data)){
+		if ((read(sensor_data->File, sensor_data->RawData, sizeof(*(sensor_data->RawData)))) == sizeof(*(sensor_data->RawData))){
 			// Les données ont été lues et placées dans "RawData"
 			// Incrémenter l'index
 			sensor_data->DataIdx++;
@@ -54,13 +57,17 @@ void *SensorTask ( void *ptr ) {
 			case ACCELEROMETRE :	for (i = 0; i < 3; i++)
 										sensor_data->Data->Data[i] = ((sensor_data->RawData->data[i] - sensor_data->Param->centerVal) * sensor_data->Param->Conversion);
 									break;
+
 			case GYROSCOPE :		for (i = 0; i < 3; i++)
 										sensor_data->Data->Data[i] = ((sensor_data->RawData->data[i] - sensor_data->Param->centerVal) * sensor_data->Param->Conversion);
 									break;
+
 			case SONAR :			sensor_data->Data->Data[0] = ((sensor_data->RawData->data[0] - sensor_data->Param->centerVal) * sensor_data->Param->Conversion);
 									break;
+
 			case BAROMETRE :		sensor_data->Data->Data[0] = ((sensor_data->RawData->data[0] - sensor_data->Param->centerVal) * sensor_data->Param->Conversion);
 									break;
+
 			case MAGNETOMETRE :		for (i = 0; i < 3; i++)
 										sensor_data->Data->Data[i] = (((double)sensor_data->RawData->data[i] - sensor_data->Param->centerVal) * sensor_data->Param->Conversion);
 									break;
@@ -70,6 +77,12 @@ void *SensorTask ( void *ptr ) {
 			new_timestamp = sensor_data->RawData->timestamp_n + (sensor_data->RawData->timestamp_s * (10^9));
 			sensor_data->Data->TimeDelay = new_timestamp - last_timestamp;
 
+//			if (j > 200) {
+//				printf("Valeur du sensor %s en x : %lf, en y : %lf, en z : %lf\n", sensor_data->Name, sensor_data->Data->Data[0], sensor_data->Data->Data[1], sensor_data->Data->Data[2]);
+//				j = 0;
+//			}
+//
+//			j++;
 
 			pthread_cond_broadcast(&(sensor_data->DataNewSampleCondVar));
 			pthread_spin_unlock(&(sensor_data->DataLock));
