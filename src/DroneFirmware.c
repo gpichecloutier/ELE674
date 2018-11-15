@@ -253,6 +253,7 @@ int main(int argc, char *argv[]) {
 				Motor.pwm[2] -= 50;
 				Motor.pwm[3] -= 50;
 			}
+			break;
 		}
 		pthread_spin_unlock(&(Motor.MotorLock));
 	}
