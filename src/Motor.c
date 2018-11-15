@@ -188,7 +188,7 @@ int MotorInit (MotorStruct *Motor) {
 
 	sem_init(&MotorTimerSem, 0, 0);
 	pthread_barrier_init(&MotorStartBarrier, NULL, 2);
-	pthread_spin_init(&(Motor->MotorLock), PTHREAD_PROCESS_PRIVATE);
+	pthread_spin_init(&(Motor->MotorLock), PTHREAD_PROCESS_SHARED);
 
 	pthread_attr_init(&attr);
 	pthread_attr_setinheritsched(&attr, PTHREAD_EXPLICIT_SCHED);
@@ -248,4 +248,3 @@ int MotorStop (MotorStruct *Motor) {
 	sem_destroy(&MotorTimerSem);
 	return 0;
 }
-
