@@ -152,8 +152,10 @@ void *ControlTask ( void *ptr ) {
 								{ 1.0/(4.0*b),  1.0/(aa*b*l), -1.0/(aa*b*l),  1.0/(4.0*d) }};
 	double			Wr;
 
-	printf("%s : Control démarré\n", __FUNCTION__);
+	printf("%s : ControlTask démarrée. Avant la barrière\n", __FUNCTION__);
 	pthread_barrier_wait(&ControlStartBarrier);
+	printf("%s : ControlTask démarrée. Après la barrière\n", __FUNCTION__);
+
 
 	while (ControlActivated) {
 		sem_wait(&ControlTimerSem);
@@ -238,6 +240,33 @@ int ControlInit (ControlStruct *Control) {
 /* de créer la Tâche ControlTask() qui va faire calculer      */
 /* les nouvelles vitesses des moteurs, basé sur l'attitude    */
 /* désirée du drone et son attitude actuelle (voir capteurs). */
+	pthread_attr_t		attr;
+	struct sched_param	param;
+	int					minprio, maxprio;
+	int i;
+
+	sem_init(&ControlTimerSem, 0, 0);
+	pthread_barrier_init(&ControlStartBarrier, NULL, 2);
+
+	pthread_attr_init(&attr);
+	pthread_attr_setinheritsched(&attr, PTHREAD_EXPLICIT_SCHED);
+	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+	pthread_attr_setscope(&attr, PTHREAD_SCOPE_SYSTEM);
+	minprio = sched_get_priority_min(POLICY);
+	maxprio = sched_get_priority_max(POLICY);
+	pthread_attr_setschedpolicy(&attr, POLICY);
+	param.sched_priority = minprio + (maxprio - minprio) / 2;
+	pthread_attr_setstacksize(&attr, THREADSTACK);
+	pthread_attr_setschedparam(&attr, &param);
+
+	printf("%s Initialisation du contrôleur du drône\n", __FUNCTION__);
+
+	// Créer la tâche Control avec pthread
+	pthread_create(&(Control->ControlThread), &attr, ControlTask, Control);
+
+	pthread_attr_destroy(&attr);
+	printf("%s Fin de l'initialisation du contrôleur du drône\n", __FUNCTION__);
+
 	return 0;
 }
 
@@ -247,10 +276,14 @@ int ControlStart (void) {
 /* Ici, vous devriez le travail du contrôleur (loi de commande) du drone. */ 
 /* Les capteurs ainsi que tout le reste du système devrait être           */
 /* prêt à faire leur travail et il ne reste plus qu'à tout démarrer.      */
-//	return retval;
+	ControlActivated = 1;
 
-	printf("ControlStart\n");
+	printf("%s : Contrôleur démarré. Avant la barrière\n", __FUNCTION__);
+	pthread_barrier_wait(&(ControlStartBarrier));
+	printf("%s : Contrôleur démarré. Après la barrière\n", __FUNCTION__);
 
+	pthread_barrier_destroy(&ControlStartBarrier);
+//	printf("%s Contrôleur démarré\n", __FUNCTION__);
 
 	return 0;
 }

@@ -192,12 +192,13 @@ int MotorInit (MotorStruct *Motor) {
 
 	pthread_attr_init(&attr);
 	pthread_attr_setinheritsched(&attr, PTHREAD_EXPLICIT_SCHED);
-	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 	pthread_attr_setscope(&attr, PTHREAD_SCOPE_SYSTEM);
 	minprio = sched_get_priority_min(POLICY);
 	maxprio = sched_get_priority_max(POLICY);
 	pthread_attr_setschedpolicy(&attr, POLICY);
-	param.sched_priority = minprio;
+	param.sched_priority = minprio + (maxprio - minprio) / 2;
+//	param.sched_priority = minprio;
 	pthread_attr_setstacksize(&attr, THREADSTACK);
 	pthread_attr_setschedparam(&attr, &param);
 
@@ -238,7 +239,11 @@ int MotorStop (MotorStruct *Motor) {
 /* Ici, vous devriez arrêter les moteurs et fermer le Port des moteurs. */
 //	détruire la tâche et les mécanismes de synchro
 	//	Voir MavLink* et Attitude* pour exemple
-	pthread_cancel(Motor->MotorThread);
+	MotorActivated = 0;
+	printf("Destruction de la tache moteur\n");
+	pthread_join(Motor->MotorThread, NULL);
+	printf("Tache moteur detruite\n");
+
 	pthread_spin_destroy(&(Motor->MotorLock));
 	sem_destroy(&MotorTimerSem);
 	return 0;

@@ -37,45 +37,49 @@ void *SensorTask ( void *ptr ) {
 	sensor_struct = (SensorStruct*)ptr;
 	SensorData sensor_data_temp;
 	SensorRawData sensor_raw_data_temp;
+	struct SensorParam_struct *param = sensor_struct->Param;
 
-
+	printf("%s En attente\n", __FUNCTION__);
 	pthread_barrier_wait(&(SensorStartBarrier));
+	printf("%s Demarre\n", __FUNCTION__);
+
 
 	// Pour printer
 //	j = 0;
 
 	while (SensorsActivated) {
-
-//		pthread_mutex_lock(&(sensor_data->DataSampleMutex));
-//		pthread_spin_lock(&(sensor_data->DataLock));
-
-//		last_timestamp = sensor_raw_data_temp.timestamp_n + (sensor_raw_data_temp.timestamp_s * (10^9));
-		last_timestamp = sensor_struct->RawData[sensor_struct->DataIdx]->timestamp_n + (sensor_struct->RawData[sensor_struct->DataIdx]->timestamp_s * (10^9));
+		last_timestamp = sensor_struct->RawData[sensor_struct->DataIdx].timestamp_n + (sensor_struct->RawData[sensor_struct->DataIdx].timestamp_s * (10^9));
 
 		// Le read est bloquant alors pas de spin lock
 		if ((read(sensor_struct->File, &sensor_raw_data_temp, sizeof(sensor_raw_data_temp))) == sizeof(sensor_raw_data_temp)){
 			// Les données ont été lues et placées dans "RawData"
 
+//			pthread_spin_lock(&(sensor_struct->DataLock));
+//			if (sensor_raw_data_temp.type != sensor_struct->type) {
+//				pthread_spin_unlock(&(sensor_struct->DataLock));
+//				return -1;
+//			}
+//			pthread_spin_unlock(&(sensor_struct->DataLock));
 
 			// Conversion du RawData en Data
 			// EST-CE QU'ON LOCK POUR LIRE LE TYPE ET CENTERVAL ET AUTRES???
-			switch (sensor_struct->type) {
+			switch (sensor_raw_data_temp.type) {
 			case ACCELEROMETRE :	for (i = 0; i < 3; i++)
-										sensor_data_temp.Data[i] = ((sensor_raw_data_temp.data[i] - sensor_struct->Param->centerVal) * sensor_struct->Param->Conversion);
+										sensor_data_temp.Data[i] = ((sensor_raw_data_temp.data[i] - param->centerVal) * param->Conversion);
 									break;
 
 			case GYROSCOPE :		for (i = 0; i < 3; i++)
-										sensor_data_temp.Data[i] = ((sensor_raw_data_temp.data[i] - sensor_struct->Param->centerVal) * sensor_struct->Param->Conversion);
+										sensor_data_temp.Data[i] = ((sensor_raw_data_temp.data[i] - param->centerVal) * param->Conversion);
 									break;
 
-			case SONAR :			sensor_data_temp.Data[0] = ((sensor_raw_data_temp.data[0] - sensor_struct->Param->centerVal) * sensor_struct->Param->Conversion);
+			case SONAR :			sensor_data_temp.Data[0] = ((sensor_raw_data_temp.data[0] - param->centerVal) * param->Conversion);
 									break;
 
-			case BAROMETRE :		sensor_data_temp.Data[0] = ((sensor_raw_data_temp.data[0] - sensor_struct->Param->centerVal) * sensor_struct->Param->Conversion);
+			case BAROMETRE :		sensor_data_temp.Data[0] = ((sensor_raw_data_temp.data[0] - param->centerVal) * param->Conversion);
 									break;
 
 			case MAGNETOMETRE :		for (i = 0; i < 3; i++)
-										sensor_data_temp.Data[i] = (((double)sensor_raw_data_temp.data[i] - sensor_struct->Param->centerVal) * sensor_struct->Param->Conversion);
+										sensor_data_temp.Data[i] = (((double)sensor_raw_data_temp.data[i] - param->centerVal) * param->Conversion);
 									break;
 			}
 
@@ -98,8 +102,8 @@ void *SensorTask ( void *ptr ) {
 			sensor_struct->DataIdx = (sensor_struct->DataIdx + 1) % DATABUFSIZE;
 
 			// 2. Copier les données
-			memcpy((void *) &(sensor_data_temp),     (void *) (sensor_struct->Data[sensor_struct->DataIdx]),    sizeof(sensor_data_temp));
-			memcpy((void *) &(sensor_raw_data_temp), (void *) (sensor_struct->RawData[sensor_struct->DataIdx]), sizeof(sensor_raw_data_temp));
+			memcpy((void *) &(sensor_data_temp),     (void *) &(sensor_struct->Data[sensor_struct->DataIdx]),    sizeof(sensor_data_temp));
+			memcpy((void *) &(sensor_raw_data_temp), (void *) &(sensor_struct->RawData[sensor_struct->DataIdx]), sizeof(sensor_raw_data_temp));
 
 			pthread_cond_broadcast(&(sensor_struct->DataNewSampleCondVar));
 			pthread_spin_unlock(&(sensor_struct->DataLock));
@@ -109,9 +113,8 @@ void *SensorTask ( void *ptr ) {
 
 
 		} else {
-			//La structure n'a pas été copiée en entier
-
-
+			// La structure n'a pas été copiée en entier
+			printf("%s Echec de la lecture du capteur\n", __FUNCTION__);
 		}
 
 	}
@@ -126,7 +129,7 @@ int SensorsInit (SensorStruct SensorTab[NUM_SENSOR]) {
 /* ouvrir les fichiers des capteurs, et de créer les Tâches qui vont */
 /* s'occuper de réceptionner les échantillons des capteurs.          */
 
-	int retval;
+	int 				retval, minprio, maxprio;
 	pthread_attr_t      attr;
 	struct sched_param	param;
 	int i;
@@ -134,9 +137,12 @@ int SensorsInit (SensorStruct SensorTab[NUM_SENSOR]) {
 	pthread_attr_init(&attr);
 	pthread_attr_setinheritsched(&attr, PTHREAD_EXPLICIT_SCHED);
 	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
-	pthread_attr_setscope(&attr, PTHREAD_SCOPE_PROCESS);
+	pthread_attr_setscope(&attr, PTHREAD_SCOPE_SYSTEM);
+	minprio = sched_get_priority_min(POLICY);
+	maxprio = sched_get_priority_max(POLICY);
 	pthread_attr_setschedpolicy(&attr, POLICY);
-	param.sched_priority = sched_get_priority_min(POLICY);
+	param.sched_priority = minprio + (maxprio - minprio) / 2;
+//	param.sched_priority = minprio;
 	pthread_attr_setstacksize(&attr, THREADSTACK);
 	pthread_attr_setschedparam(&attr, &param);
 
@@ -212,7 +218,7 @@ int SensorsStop (SensorStruct SensorTab[NUM_SENSOR]) {
 
 	SensorsActivated = 0;
 	for (i = ACCELEROMETRE; i <= MAGNETOMETRE; i++) {
-		pthread_cancel(SensorTab[i].SensorThread);
+		pthread_join(SensorTab[i].SensorThread, NULL);
 		pthread_spin_destroy(&(SensorTab[i].DataSampleMutex));
 		pthread_mutex_destroy(&(SensorTab[i].DataSampleMutex));
 		pthread_cond_destroy(&(SensorTab[i].DataNewSampleCondVar));

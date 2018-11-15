@@ -220,8 +220,8 @@ int MavlinkStart (void) {
 	int retval = 0;
 
 	MavlinkActivated = 1;
-//	pthread_barrier_wait(&(MavlinkStartBarrier));
-//	pthread_barrier_destroy(&MavlinkStartBarrier);
+	pthread_barrier_wait(&(MavlinkStartBarrier));
+	pthread_barrier_destroy(&MavlinkStartBarrier);
 	printf("%s Mavlink démarré\n", __FUNCTION__);
 
 	return retval;

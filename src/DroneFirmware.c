@@ -78,6 +78,12 @@ void SigTimerHandler (int signo) {
 			sem_post(&MotorTimerSem);
 	}
 
+//	if (ControlActivated) {
+//		if ((Period % CONTROL_PERIOD) == 0)
+//			sem_post(&ControlTimerSem);
+//	}
+
+
 	if ((Period % MAIN_PERIOD) == 0)
 		sem_post (&MainTimerSem);
 	Period = (Period + 1) % MAX_PERIOD;
@@ -180,7 +186,7 @@ int main(int argc, char *argv[]) {
 	printf("%s ça démarre !!!\n", __FUNCTION__);
 
 	param.sched_priority = sched_get_priority_min(POLICY);
-   pthread_setschedparam(pthread_self(), POLICY, &param);
+	pthread_setschedparam(pthread_self(), POLICY, &param);
 
 	sem_init(&MainTimerSem, 0, 0);
 
@@ -195,12 +201,12 @@ int main(int argc, char *argv[]) {
 
 	if ((retval = MotorInit(&Motor)) < 0)
 		return EXIT_FAILURE;
-	if ((retval = SensorsLogsInit(SensorTab)) < 0)
-		return EXIT_FAILURE;
-	if ((retval = SensorsInit(SensorTab)) < 0)
-		return EXIT_FAILURE;
-	if ((retval = AttitudeInit(AttitudeTab)) < 0)
-		return EXIT_FAILURE;
+//	if ((retval = SensorsLogsInit(SensorTab)) < 0)
+//		return EXIT_FAILURE;
+//	if ((retval = SensorsInit(SensorTab)) < 0)
+//		return EXIT_FAILURE;
+//	if ((retval = AttitudeInit(AttitudeTab)) < 0)
+//		return EXIT_FAILURE;
 //	if ((retval = MavlinkInit(&Mavlink, &AttitudeDesire, &AttitudeMesure, IPAddress)) < 0)
 //		return EXIT_FAILURE;
 //	if ((retval = ControlInit(&Control)) < 0)
@@ -211,13 +217,13 @@ int main(int argc, char *argv[]) {
 	StartTimer();
 
 	MotorStart();
-	SensorsStart();
-	AttitudeStart();
+//	SensorsStart();
+//	AttitudeStart();
 
-	SensorsLogsStart();
+//	SensorsLogsStart();
 
-	MavlinkStart();
-	ControlStart();
+//	MavlinkStart();
+//	ControlStart();
 
 	printf("%s Tout démarré\n", __FUNCTION__);
 
@@ -228,7 +234,7 @@ int main(int argc, char *argv[]) {
 
 		ch = tolower(getchar_nonblock());
 
-//		À faire pour tester les moteurs avec le clavier.
+		// À faire pour tester les moteurs avec le clavier.
 		pthread_spin_lock(&(Motor.MotorLock));
 
 		switch (ch){
@@ -258,9 +264,9 @@ int main(int argc, char *argv[]) {
 //	ControlStop(&Control);
 
 	MotorStop(&Motor);
-	SensorsLogsStop(SensorTab);
-	SensorsStop(SensorTab);
-	AttitudeStop(AttitudeTab);
+//	SensorsLogsStop(SensorTab);
+//	SensorsStop(SensorTab);
+//	AttitudeStop(AttitudeTab);
 
 	StopTimer();
 
