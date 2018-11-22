@@ -35,41 +35,43 @@ void *SensorTask ( void *ptr ) {
 
 	SensorStruct *sensor_struct;
 	sensor_struct = (SensorStruct*)ptr;
+	SensorParam *sensor_param_temp;
 	SensorData sensor_data_temp;
 	SensorRawData sensor_raw_data_temp;
 	struct SensorParam_struct *param = sensor_struct->Param;
 
-	printf("%s En attente\n", __FUNCTION__);
 	pthread_barrier_wait(&(SensorStartBarrier));
-	printf("%s Demarre\n", __FUNCTION__);
-
 
 	// Pour printer
-//	j = 0;
+	j = 0;
 
 	while (SensorsActivated) {
+		pthread_mutex_lock(&(sensor_struct->DataSampleMutex));
+
 		last_timestamp = sensor_struct->RawData[sensor_struct->DataIdx].timestamp_n + (sensor_struct->RawData[sensor_struct->DataIdx].timestamp_s * (10^9));
 
+		// On fait une copie des paramètres
+		memcpy((void *) sensor_param_temp, (void *) sensor_struct->Param, sizeof(sensor_param_temp));
+
+		pthread_mutex_unlock(&(sensor_struct->DataSampleMutex));
+
 		// Le read est bloquant alors pas de spin lock
-		if ((read(sensor_struct->File, &sensor_raw_data_temp, sizeof(sensor_raw_data_temp))) == sizeof(sensor_raw_data_temp)){
+		if ((read(sensor_struct->File, &sensor_raw_data_temp, sizeof(sensor_raw_data_temp))) == sizeof(sensor_raw_data_temp)) {
 			// Les données ont été lues et placées dans "RawData"
 
-//			pthread_spin_lock(&(sensor_struct->DataLock));
-//			if (sensor_raw_data_temp.type != sensor_struct->type) {
-//				pthread_spin_unlock(&(sensor_struct->DataLock));
-//				return -1;
-//			}
-//			pthread_spin_unlock(&(sensor_struct->DataLock));
-
 			// Conversion du RawData en Data
-			// EST-CE QU'ON LOCK POUR LIRE LE TYPE ET CENTERVAL ET AUTRES???
 			switch (sensor_raw_data_temp.type) {
 			case ACCELEROMETRE :	for (i = 0; i < 3; i++)
 										sensor_data_temp.Data[i] = ((sensor_raw_data_temp.data[i] - param->centerVal) * param->Conversion);
 									break;
 
-			case GYROSCOPE :		for (i = 0; i < 3; i++)
+			case GYROSCOPE :		for (i = 0; i < 3; i++) {
 										sensor_data_temp.Data[i] = ((sensor_raw_data_temp.data[i] - param->centerVal) * param->Conversion);
+
+//										sensor_data_temp.Data[i] =  sensor_data_temp.Data[i];
+									}
+
+
 									break;
 
 			case SONAR :			sensor_data_temp.Data[0] = ((sensor_raw_data_temp.data[0] - param->centerVal) * param->Conversion);
@@ -87,13 +89,6 @@ void *SensorTask ( void *ptr ) {
 			new_timestamp = sensor_raw_data_temp.timestamp_n + (sensor_raw_data_temp.timestamp_s * (10^9));
 			sensor_data_temp.TimeDelay = new_timestamp - last_timestamp;
 
-//			if (j > 200) {
-//				printf("Valeur du sensor %s en x : %lf, en y : %lf, en z : %lf\n", sensor_data->Name, sensor_data->Data->Data[0], sensor_data->Data->Data[1], sensor_data->Data->Data[2]);
-//				j = 0;
-//			}
-//
-//			j++;
-
 			// On "lock" pour assigner le data au data_temp...
 			pthread_mutex_lock(&(sensor_struct->DataSampleMutex));
 			pthread_spin_lock(&(sensor_struct->DataLock));
@@ -102,16 +97,19 @@ void *SensorTask ( void *ptr ) {
 			sensor_struct->DataIdx = (sensor_struct->DataIdx + 1) % DATABUFSIZE;
 
 			// 2. Copier les données
-			memcpy((void *) &(sensor_data_temp),     (void *) &(sensor_struct->Data[sensor_struct->DataIdx]),    sizeof(sensor_data_temp));
-			memcpy((void *) &(sensor_raw_data_temp), (void *) &(sensor_struct->RawData[sensor_struct->DataIdx]), sizeof(sensor_raw_data_temp));
+			memcpy((void *) &(sensor_struct->Data[sensor_struct->DataIdx]),    (void *) &(sensor_data_temp),     sizeof(sensor_data_temp));
+			memcpy((void *) &(sensor_struct->RawData[sensor_struct->DataIdx]), (void *) &(sensor_raw_data_temp), sizeof(sensor_raw_data_temp));
+
+//			if (j > 200) {
+//				printf("Valeur de l'index du sensor %s : %d\n",  sensor_struct->Name, sensor_struct->DataIdx);
+//				printf("Valeur du sensor %s en x : %lf, en y : %lf, en z : %lf\n", sensor_struct->Name, sensor_struct->Data->Data[0], sensor_struct->Data->Data[1], sensor_struct->Data->Data[2]);
+//				j = 0;
+//			}
+//			j++;
 
 			pthread_cond_broadcast(&(sensor_struct->DataNewSampleCondVar));
 			pthread_spin_unlock(&(sensor_struct->DataLock));
 			pthread_mutex_unlock(&(sensor_struct->DataSampleMutex));
-
-
-
-
 		} else {
 			// La structure n'a pas été copiée en entier
 			printf("%s Echec de la lecture du capteur\n", __FUNCTION__);
@@ -132,7 +130,8 @@ int SensorsInit (SensorStruct SensorTab[NUM_SENSOR]) {
 	int 				retval, minprio, maxprio;
 	pthread_attr_t      attr;
 	struct sched_param	param;
-	int i;
+	int i, j, nbEchantillons = 0;
+	SensorRawData sensor_raw_data_avg, sensor_raw_data_temp;
 
 	pthread_attr_init(&attr);
 	pthread_attr_setinheritsched(&attr, PTHREAD_EXPLICIT_SCHED);
@@ -142,7 +141,6 @@ int SensorsInit (SensorStruct SensorTab[NUM_SENSOR]) {
 	maxprio = sched_get_priority_max(POLICY);
 	pthread_attr_setschedpolicy(&attr, POLICY);
 	param.sched_priority = minprio + (maxprio - minprio) / 2;
-//	param.sched_priority = minprio;
 	pthread_attr_setstacksize(&attr, THREADSTACK);
 	pthread_attr_setschedparam(&attr, &param);
 
@@ -157,6 +155,23 @@ int SensorsInit (SensorStruct SensorTab[NUM_SENSOR]) {
 			printf("%s : Impossible d'ouvrir le pilote de %s => retval = %d\n", __FUNCTION__, SensorTab[i].Name, retval);
 			return -1;
 		}
+
+		// Calibration du Gyroscope
+		if(i == GYROSCOPE) {
+			while(nbEchantillons < 100) {
+				if((read(SensorTab[i].File, &sensor_raw_data_temp, sizeof(sensor_raw_data_temp))) == sizeof(sensor_raw_data_temp)) {
+					for(j = 0; j < 3; j++)
+						sensor_raw_data_avg.data[j] = sensor_raw_data_temp.data[j] + sensor_raw_data_avg.data[j];
+
+					nbEchantillons++;
+				}
+			}
+
+			for(j = 0; j < 3; j++)
+				SensorTab[i].Param->beta[j] = sensor_raw_data_avg.data[j] / 100;
+
+		}
+
 
 		// Initialisation des tâches
 		if((retval = pthread_create(&(SensorTab[i].SensorThread), &attr, SensorTask, (void *) &SensorTab[i])) != 0) {
@@ -189,8 +204,6 @@ int SensorsInit (SensorStruct SensorTab[NUM_SENSOR]) {
 
 	pthread_attr_destroy(&attr);
 
-	printf("Tout a été crééééyeees...\n");
-
 	return 0;
 };
 
@@ -215,16 +228,24 @@ int SensorsStop (SensorStruct SensorTab[NUM_SENSOR]) {
 /* Ici, vous devriez défaire ce que vous avez fait comme travail dans */
 /* SensorsInit() (toujours verifier les retours de chaque call)...    */ 
 	int16_t	i;
+	int err;
 
 	SensorsActivated = 0;
+
 	for (i = ACCELEROMETRE; i <= MAGNETOMETRE; i++) {
-		pthread_join(SensorTab[i].SensorThread, NULL);
-		pthread_spin_destroy(&(SensorTab[i].DataSampleMutex));
+		err = pthread_join(SensorTab[i].SensorThread, NULL);
+
+		if (err){
+			printf("pthread_join(SensorTab[%d].SensorThread) : Erreur\n", i);
+			return err;
+		}
+
+		pthread_spin_destroy(&(SensorTab[i].DataLock));
 		pthread_mutex_destroy(&(SensorTab[i].DataSampleMutex));
 		pthread_cond_destroy(&(SensorTab[i].DataNewSampleCondVar));
 	}
 
-	return 0;
+	return err;
 }
 
 

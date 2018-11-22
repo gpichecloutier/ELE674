@@ -293,7 +293,23 @@ int ControlStart (void) {
 int ControlStop (ControlStruct *Control) {
 /* A faire! */
 /* Ici, vous devriez arrêter le contrôleur du drone.    */ 
-	return 0;
+	int err;
+
+	ControlActivated = 0;
+	sem_post(&ControlTimerSem);
+
+
+	printf("Destruction de la tache Control\n");
+	err = pthread_join(Control->ControlThread, NULL);
+
+	if (err) {
+		printf("pthread_join(Motor->MotorThread) : Erreur\n");
+		return err;
+	}
+
+	printf("Tache Control detruite\n");
+
+	return err;
 }
 
 

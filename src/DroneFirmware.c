@@ -6,6 +6,9 @@
  Copyright   : Your copyright notice
  Description : Code principal du Drone. Basé sur le code de Bruno De Kelper.
  ============================================================================
+
+ DO NOT TAKE DRONE #5!!!
+
  */
 
 #include <stdio.h>
@@ -66,26 +69,26 @@ void SigTimerHandler (int signo) {
 /* pour l'ensemble des Tâches du système.                                                       */
 /* Vous avez un exemple ci-dessous de comment utiliser ceci pour le Main et pour Mavlink.       */
 /* Il vous faudra ajouter ce qui convient pour les autres Tâches du système, selon les besoins. */
-//	if (MavlinkActivated) {
+	if (MavlinkActivated) {
 //		if ((Period % MAVLINK_RECEIVE_PERIOD) == 0)
 //			sem_post(&MavlinkReceiveTimerSem);
-//		if ((Period % MAVLINK_STATUS_PERIOD) == 0)
-//			sem_post(&MavlinkStatusTimerSem);
-//	}
+		if ((Period % MAVLINK_STATUS_PERIOD) == 0)
+			sem_post(&MavlinkStatusTimerSem);
+	}
 
 	if (MotorActivated) {
 		if ((Period % MOTOR_PERIOD) == 0)
 			sem_post(&MotorTimerSem);
 	}
 
-//	if (ControlActivated) {
-//		if ((Period % CONTROL_PERIOD) == 0)
-//			sem_post(&ControlTimerSem);
-//	}
-
+	if (ControlActivated) {
+		if ((Period % CONTROL_PERIOD) == 0)
+			sem_post(&ControlTimerSem);
+	}
 
 	if ((Period % MAIN_PERIOD) == 0)
 		sem_post (&MainTimerSem);
+
 	Period = (Period + 1) % MAX_PERIOD;
 
 }
@@ -185,7 +188,11 @@ int main(int argc, char *argv[]) {
 	printf("%s : IP = %s\n", __FUNCTION__, IPAddress);
 	printf("%s ça démarre !!!\n", __FUNCTION__);
 
-	param.sched_priority = sched_get_priority_min(POLICY);
+	minprio = sched_get_priority_min(POLICY);
+	maxprio = sched_get_priority_max(POLICY);
+
+	param.sched_priority = minprio;
+
 	pthread_setschedparam(pthread_self(), POLICY, &param);
 
 	sem_init(&MainTimerSem, 0, 0);
@@ -201,29 +208,29 @@ int main(int argc, char *argv[]) {
 
 	if ((retval = MotorInit(&Motor)) < 0)
 		return EXIT_FAILURE;
-//	if ((retval = SensorsLogsInit(SensorTab)) < 0)
-//		return EXIT_FAILURE;
-//	if ((retval = SensorsInit(SensorTab)) < 0)
-//		return EXIT_FAILURE;
-//	if ((retval = AttitudeInit(AttitudeTab)) < 0)
-//		return EXIT_FAILURE;
-//	if ((retval = MavlinkInit(&Mavlink, &AttitudeDesire, &AttitudeMesure, IPAddress)) < 0)
-//		return EXIT_FAILURE;
-//	if ((retval = ControlInit(&Control)) < 0)
-//		return EXIT_FAILURE;
+	if ((retval = SensorsLogsInit(SensorTab)) < 0)
+		return EXIT_FAILURE;
+	if ((retval = SensorsInit(SensorTab)) < 0)
+		return EXIT_FAILURE;
+	if ((retval = AttitudeInit(AttitudeTab)) < 0)
+		return EXIT_FAILURE;
+	if ((retval = MavlinkInit(&Mavlink, &AttitudeDesire, &AttitudeMesure, IPAddress)) < 0)
+		return EXIT_FAILURE;
+	if ((retval = ControlInit(&Control)) < 0)
+		return EXIT_FAILURE;
 
 	printf("%s Tout initialisé\n", __FUNCTION__);
 
 	StartTimer();
 
 	MotorStart();
-//	SensorsStart();
-//	AttitudeStart();
+	SensorsStart();
+	AttitudeStart();
 
-//	SensorsLogsStart();
+	SensorsLogsStart();
 
-//	MavlinkStart();
-//	ControlStart();
+	MavlinkStart();
+	ControlStart();
 
 	printf("%s Tout démarré\n", __FUNCTION__);
 
@@ -253,21 +260,25 @@ int main(int argc, char *argv[]) {
 				Motor.pwm[2] -= 50;
 				Motor.pwm[3] -= 50;
 			}
-			break;
 		}
 		pthread_spin_unlock(&(Motor.MotorLock));
 	}
 
-//	MavlinkStop(&Mavlink);
+	MavlinkStop(&Mavlink);
+
+	printf("Dans le main. Mavlink arrete\n");
+
 	pthread_spin_destroy(&(AttitudeDesire.AttitudeLock));
 	pthread_spin_destroy(&(AttitudeMesure.AttitudeLock));
 
-//	ControlStop(&Control);
+	printf("Dans le main. Spinlock Attitude Desiree et Mesuree detruits\n");
+
+	ControlStop(&Control);
 
 	MotorStop(&Motor);
-//	SensorsLogsStop(SensorTab);
-//	SensorsStop(SensorTab);
-//	AttitudeStop(AttitudeTab);
+	SensorsLogsStop(SensorTab);
+	SensorsStop(SensorTab);
+	AttitudeStop(AttitudeTab);
 
 	StopTimer();
 

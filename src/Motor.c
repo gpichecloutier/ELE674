@@ -16,18 +16,16 @@ extern int		MotorActivated;
 pthread_barrier_t 	MotorStartBarrier;
 
 void SetPWM(MotorStruct *Motor, uint8_t *cmd) {
-	uint16_t pwm1 = Motor->pwm[0];
-	uint16_t pwm2 = Motor->pwm[1];
-	uint16_t pwm3 = Motor->pwm[2];
-	uint16_t pwm4 = Motor->pwm[3];
+	uint8_t pwm1 = (uint16_t) Motor->pwm[0];
+	uint8_t pwm2 = (uint16_t) Motor->pwm[1];
+	uint8_t pwm3 = (uint16_t) Motor->pwm[2];
+	uint8_t pwm4 = (uint16_t) Motor->pwm[3];
 
 	cmd[0] = 0x20 | ((pwm1&0x1ff)>>4);
 	cmd[1] = ((pwm1&0x1ff)<<4) | ((pwm2&0x1ff)>>5);
 	cmd[2] = ((pwm2&0x1ff)<<3) | ((pwm3&0x1ff)>>6);
 	cmd[3] = ((pwm3&0x1ff)<<2) | ((pwm4&0x1ff)>>7);
 	cmd[4] = ((pwm4&0x1ff)<<1);
-
-//	write(mot_filedesc, cmd, 5);
 }
 
 int gpio_set (int nr, int val)  {
@@ -149,13 +147,15 @@ void *MotorTask ( void *ptr ) {
 /* à chaque moteur à interval régulier (5 ms).         */
 
 	uint8_t cmd[5];
-	MotorStruct *motor_data;
-	motor_data = (MotorStruct*)ptr;
+	MotorStruct *motor_data = (MotorStruct*)ptr;
 
 	pthread_barrier_wait(&(MotorStartBarrier));
 
 	while (MotorActivated) {
 		sem_wait(&MotorTimerSem);
+
+		if (MotorActivated == 0)
+			break; /* exit while */
 
 		// Bâtit la trame de communication
 		pthread_spin_lock(&(motor_data->MotorLock));
@@ -165,7 +165,7 @@ void *MotorTask ( void *ptr ) {
 		// Envoie la trame sur le port série
 		write(motor_data->file, cmd, 5);
 	}
-	pthread_exit(0); /* exit thread */
+	pthread_exit(NULL); /* exit thread */
 }
 
 
@@ -239,12 +239,23 @@ int MotorStop (MotorStruct *Motor) {
 /* Ici, vous devriez arrêter les moteurs et fermer le Port des moteurs. */
 //	détruire la tâche et les mécanismes de synchro
 	//	Voir MavLink* et Attitude* pour exemple
+	int err;
+
 	MotorActivated = 0;
+	sem_post(&MotorTimerSem);
+
 	printf("Destruction de la tache moteur\n");
-	pthread_join(Motor->MotorThread, NULL);
+	err = pthread_join(Motor->MotorThread, NULL);
+
+	if (err) {
+		printf("pthread_join(Motor->MotorThread) : Erreur\n");
+		return err;
+	}
+
 	printf("Tache moteur detruite\n");
 
 	pthread_spin_destroy(&(Motor->MotorLock));
 	sem_destroy(&MotorTimerSem);
-	return 0;
+
+	return err;
 }

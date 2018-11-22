@@ -103,6 +103,7 @@ void *MavlinkReceiveTask(void *ptr) {
 	pthread_barrier_wait(&(MavlinkStartBarrier));
 
 	while (MavlinkActivated) {
+		break;
 		sem_wait(&MavlinkReceiveTimerSem);
 		if (MavlinkActivated == 0)
 			break;
@@ -141,7 +142,6 @@ void *MavlinkReceiveTask(void *ptr) {
 	}
 	printf("%s : Mavlink Receive Arrêté\n", __FUNCTION__);
 	pthread_exit(NULL);
-
 }
 
 

@@ -71,18 +71,26 @@ void *AttitudeTask ( void *ptr ) {
 		switch (Sensor->type) {
 		  case ACCELEROMETRE :	LocData.Roll  = atan2(XYZ[0][Y_AXE], XYZ[0][Z_AXE]);
 		  	  	  	  	  	  	LocData.Pitch = atan(XYZ[0][X_AXE]/(XYZ[0][Y_AXE]*sin(LocData.Roll)+XYZ[0][Z_AXE]*cos(LocData.Roll)));
+//		  	  	  	  	  	  	printf("ACCEL roll : %lf\n", LocData.Roll);
+//		  	  	  	  	  	  	printf("ACCEL pitch: %lf\n", LocData.Pitch);
 			  	  	  	  	  	break;
 		  case GYROSCOPE :		LocSpeed.Roll  = (XYZ[0][X_AXE]);
 		  	  	  	  	  	  	LocSpeed.Pitch = -(XYZ[0][Y_AXE]);
 		  	  	  	  	  	  	LocSpeed.Yaw   = -(XYZ[0][Z_AXE]);
+//		  	  	  	  	  	  	printf("GYROS roll : %lf\n", LocSpeed.Roll);
+//		  	  	  	  	  	  	printf("GYROS pitch: %lf\n", LocSpeed.Pitch);
+//		  	  	  	  	  	  	printf("GYROS yaw  : %lf\n", LocSpeed.Yaw);
 	  	  	  	  				break;
 		  case SONAR :			LocData.Elevation  = (XYZ[0][X_AXE]);
 		  	  	  	  	  	  	LocSpeed.Elevation = ((XYZ[0][X_AXE])-(XYZ[1][X_AXE]))/Ts;
+//		  	  	  	  	  	  	printf("SONAR DElev: %lf\n", LocData.Elevation);
+//		  	  	  	  	  	  	printf("SONAR SEle : %lf\n", LocSpeed.Elevation);
 	  	  	  	  				break;
 		  case BAROMETRE :		break;
 		  case MAGNETOMETRE :	My = -XYZ[0][Z_AXE]*sin(LocData.Roll) + XYZ[0][X_AXE]*cos(LocData.Roll);
 								Mx = -XYZ[0][Y_AXE]*cos(LocData.Pitch) - XYZ[0][X_AXE]*sin(LocData.Pitch)*sin(LocData.Roll) - XYZ[0][Z_AXE]*sin(LocData.Pitch)*cos(LocData.Roll);
 								LocData.Yaw = atan2(My,Mx);
+//		  	  	  	  	  	  	printf("MAGNE yaw  : %lf\n", LocData.Yaw);
   								break;
 		}
 
