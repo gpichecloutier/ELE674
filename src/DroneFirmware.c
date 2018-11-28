@@ -70,8 +70,8 @@ void SigTimerHandler (int signo) {
 /* Vous avez un exemple ci-dessous de comment utiliser ceci pour le Main et pour Mavlink.       */
 /* Il vous faudra ajouter ce qui convient pour les autres Tâches du système, selon les besoins. */
 	if (MavlinkActivated) {
-//		if ((Period % MAVLINK_RECEIVE_PERIOD) == 0)
-//			sem_post(&MavlinkReceiveTimerSem);
+		if ((Period % MAVLINK_RECEIVE_PERIOD) == 0)
+			sem_post(&MavlinkReceiveTimerSem);
 		if ((Period % MAVLINK_STATUS_PERIOD) == 0)
 			sem_post(&MavlinkStatusTimerSem);
 	}
