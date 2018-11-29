@@ -66,10 +66,10 @@ void *SensorTask ( void *ptr ) {
 										sensor_data_calibre.Data[i] = 0;
 
 										// Application de la calibration
-//										for (j = 0; j < 3; j++)
-//											sensor_data_calibre.Data[i] += (sensor_param_temp->alpha[i][j] * sensor_data_converti.Data[j]);
-//
-//										sensor_data_calibre.Data[i] += sensor_param_temp->beta[i];
+										for (j = 0; j < 3; j++)
+											sensor_data_calibre.Data[i] += (sensor_param_temp->alpha[i][j] * sensor_data_converti.Data[j]);
+
+										sensor_data_calibre.Data[i] -= sensor_param_temp->beta[i];
 									}
 									break;
 
@@ -80,10 +80,10 @@ void *SensorTask ( void *ptr ) {
 										sensor_data_calibre.Data[i] = 0;
 
 										// Application de la calibration
-//										for (j = 0; j < 3; j++)
-//											sensor_data_calibre.Data[i] += (sensor_param_temp->alpha[i][j] * sensor_data_converti.Data[j]);
-//
-//										sensor_data_calibre.Data[i] += sensor_param_temp->beta[i];
+										for (j = 0; j < 3; j++)
+											sensor_data_calibre.Data[i] += (sensor_param_temp->alpha[i][j] * sensor_data_converti.Data[j]);
+
+										sensor_data_calibre.Data[i] -= sensor_param_temp->beta[i];
 									}
 
 									break;
@@ -93,10 +93,10 @@ void *SensorTask ( void *ptr ) {
 									sensor_data_calibre.Data[0] = 0;
 
 									// Application de la calibration
-//									for (j = 0; j < 3; j++)
-//										sensor_data_calibre.Data[i] += (sensor_param_temp->alpha[i][j] * sensor_data_converti.Data[j]);
-//
-//									sensor_data_calibre.Data[i] += sensor_param_temp->beta[i];
+									for (j = 0; j < 3; j++)
+										sensor_data_calibre.Data[i] += (sensor_param_temp->alpha[i][j] * sensor_data_converti.Data[j]);
+
+									sensor_data_calibre.Data[i] -= sensor_param_temp->beta[i];
 
 									break;
 
@@ -105,10 +105,10 @@ void *SensorTask ( void *ptr ) {
 									sensor_data_calibre.Data[0] = 0;
 
 									// Application de la calibration
-//									for (j = 0; j < 3; j++)
-//										sensor_data_calibre.Data[i] += (sensor_param_temp->alpha[i][j] * sensor_data_converti.Data[j]);
-//
-//									sensor_data_calibre.Data[i] += sensor_param_temp->beta[i];
+									for (j = 0; j < 3; j++)
+										sensor_data_calibre.Data[i] += (sensor_param_temp->alpha[i][j] * sensor_data_converti.Data[j]);
+
+									sensor_data_calibre.Data[i] -= sensor_param_temp->beta[i];
 
 									break;
 
@@ -119,17 +119,17 @@ void *SensorTask ( void *ptr ) {
 										sensor_data_calibre.Data[i] = 0;
 
 										// Application de la calibration
-//										for (j = 0; j < 3; j++)
-//											sensor_data_calibre.Data[i] += (sensor_param_temp->alpha[i][j] * sensor_data_converti.Data[j]);
-//
-//										sensor_data_calibre.Data[i] += sensor_param_temp->beta[i];
+										for (j = 0; j < 3; j++)
+											sensor_data_calibre.Data[i] += (sensor_param_temp->alpha[i][j] * sensor_data_converti.Data[j]);
+
+										sensor_data_calibre.Data[i] -= sensor_param_temp->beta[i];
 									}
 									break;
 			}
 
 			// Calcul du TimeDelay
 			new_timestamp = sensor_raw_data_temp.timestamp_n + (sensor_raw_data_temp.timestamp_s * (10^9));
-			sensor_data_converti.TimeDelay = new_timestamp - last_timestamp;
+			sensor_data_calibre.TimeDelay = new_timestamp - last_timestamp;
 
 			// On "lock" pour assigner le data au data_temp...
 			pthread_mutex_lock(&(sensor_struct->DataSampleMutex));
@@ -139,7 +139,7 @@ void *SensorTask ( void *ptr ) {
 			sensor_struct->DataIdx = (sensor_struct->DataIdx + 1) % DATABUFSIZE;
 
 			// 2. Copier les données
-			memcpy((void *) &(sensor_struct->Data[sensor_struct->DataIdx]),    (void *) &(sensor_data_converti),  sizeof(sensor_data_converti));
+			memcpy((void *) &(sensor_struct->Data[sensor_struct->DataIdx]),    (void *) &(sensor_data_calibre),  sizeof(sensor_data_calibre));
 			memcpy((void *) &(sensor_struct->RawData[sensor_struct->DataIdx]), (void *) &(sensor_raw_data_temp), sizeof(sensor_raw_data_temp));
 
 //			if (j > 200) {
