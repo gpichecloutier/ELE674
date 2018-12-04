@@ -83,11 +83,17 @@ typedef struct Sensor_struct {
 	SensorData			*Data;
 } SensorStruct;
 
+
+/* Accélération maximale des moteurs: 1.62g (trouvé en cours) */
+/* Accélération gravitationnelle: 		1.00g */
+/* Accélération positive maximale: 512 * (1.62 + 1) + 2048 = 3387 (Drône à l'envers, propulsé vers le sol) */
+/* Accélération négative maximale: 2048 - (512 * 1) = 1506 (Drône à l'endroit, chute libre) */
+
 #define ACCEL_PARAM { .AbsErrorMax 	        = 25, \
 		 	 	 	  .RelErrorMax   		= 25, \
-		 	 	 	  .minVal 		 		= 205.0, \
+		 	 	 	  .minVal 		 		= 1506.0, \
 		 	 	 	  .centerVal 	 		= 2048.0, \
-		 	 	 	  .maxVal 		 		= 3891.0, \
+		 	 	 	  .maxVal 		 		= 3387.0, \
 					  .Conversion 	 		= 4.0/2048.0, \
 					  .alpha 		 		= {{0.98081557, -0.05644951, -0.02957259},{-0.05646295, 0.98907009, -0.03478460},{-0.02957224, -0.03477524, 1.02502064}}, \
 					  .beta 		 		= {-0.03472795, -0.00820768, 0.01836154} \
@@ -102,6 +108,8 @@ typedef struct Sensor_struct {
 	 	 	 	 	 .alpha				   = {{1.0, 0.0, 0.0},{0.0, 1.0, 0.0},{0.0, 0.0, 1.0}}, \
 	 	 	 	 	 .beta				   = {0.0, 0.0, 0.0} \
 				   }
+
+/* Brones déterminées en classe (3 cm à 6 m) */
 
 #define SONAR_PARAM { .AbsErrorMax			= 25, \
 					  .RelErrorMax			= 25, \
@@ -122,6 +130,8 @@ typedef struct Sensor_struct {
 					  .alpha				= {{1.0, 0.0, 0.0},{0.0, 1.0, 0.0},{0.0, 0.0, 1.0}}, \
 					  .beta					= {0.0, 0.0, 0.0} \
 					}
+
+/* Brones déterminées en classe (-55 uT à 55 uT) pour Montréal */
 
 #define MAGNETO_PARAM { .AbsErrorMax  		  = 25, \
 						.RelErrorMax  		  = 25, \
