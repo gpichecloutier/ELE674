@@ -1,14 +1,11 @@
 /*
  ============================================================================
- Name        : ARDrone.c
+ Name        : DroneFirmware.c
  Author      : Gabriel Piché Cloutier, Francis Jeanneau
  Version     :
  Copyright   : Your copyright notice
  Description : Code principal du Drone. Basé sur le code de Bruno De Kelper.
  ============================================================================
-
- DO NOT TAKE DRONE #5!!!
-
  */
 
 #include <stdio.h>

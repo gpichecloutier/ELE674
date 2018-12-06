@@ -2,7 +2,7 @@
  * Motor.h
  *
  *  Created on: 12 sept. 2013
- *      Author: Gabriel Piché Cloutier, Francis Jeanneau
+ *  Author: Gabriel Piché Cloutier, Francis Jeanneau
  */
 
 #ifndef MOTOR_H_

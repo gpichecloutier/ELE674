@@ -2,7 +2,7 @@
  * Control.c
  *
  *  Created on: 28 sept. 2013
- *      Author: bruno
+ *      Author: Gabriel Piché Cloutier, Francis Jeanneau, bruno
  */
 
 #include "Control.h"
@@ -283,7 +283,6 @@ int ControlStart (void) {
 	printf("%s : Contrôleur démarré. Après la barrière\n", __FUNCTION__);
 
 	pthread_barrier_destroy(&ControlStartBarrier);
-//	printf("%s Contrôleur démarré\n", __FUNCTION__);
 
 	return 0;
 }

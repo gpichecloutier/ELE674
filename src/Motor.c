@@ -2,7 +2,7 @@
  * Motor.c
  *
  *  Created on: 12 sept. 2013
- *      Author: Gabriel Piché Cloutier, Francis Jeanneau
+ *  Author: Gabriel Piché Cloutier, Francis Jeanneau
  */
 
 
@@ -125,22 +125,6 @@ int MotorPortInit(MotorStruct *Motor) {
 	return 0;
 }
 
-
-void motor_send(MotorStruct *Motor, int SendMode) {
-/* Fonction utilitaire pour simplifier les transmissions aux moteurs */
-
-	switch (SendMode) {
-	case MOTOR_NONE : 		break;
-	case MOTOR_PWM_ONLY :	/* A faire! */
-							break;
-	case MOTOR_LED_ONLY :	/* A faire! */
-							break;
-	case MOTOR_PWM_LED :	/* A faire! */
-							break;
-	}
-}
-
-
 void *MotorTask ( void *ptr ) {
 /* A faire! */
 /* Tache qui transmet les nouvelles valeurs de vitesse */
@@ -176,18 +160,16 @@ int MotorInit (MotorStruct *Motor) {
 /* fonction MotorPortInit() et créer la Tâche MotorTask()  */
 /* qui va s'occuper des mises à jours des moteurs en cours */
 /* d'exécution.                                            */
-//	Créer un semaphore pour cadencer
-//	Voir MavLink* et Attitude* pour exemple
-//	Créer la tâche moteur (pthread create...)
-//	MotorPortInit()
-//	spinlock pour motor_struct
+
 	pthread_attr_t		attr;
 	struct sched_param	param;
 	int					minprio, maxprio;
 	int i;
 
+	// Créer un semaphore pour cadencer
 	sem_init(&MotorTimerSem, 0, 0);
 	pthread_barrier_init(&MotorStartBarrier, NULL, 2);
+	//	spinlock pour motor_struct
 	pthread_spin_init(&(Motor->MotorLock), PTHREAD_PROCESS_SHARED);
 
 	pthread_attr_init(&attr);
@@ -198,7 +180,6 @@ int MotorInit (MotorStruct *Motor) {
 	maxprio = sched_get_priority_max(POLICY);
 	pthread_attr_setschedpolicy(&attr, POLICY);
 	param.sched_priority = minprio + (maxprio - minprio) / 2 ;
-//	param.sched_priority = minprio;
 	pthread_attr_setstacksize(&attr, THREADSTACK);
 	pthread_attr_setschedparam(&attr, &param);
 
@@ -237,8 +218,8 @@ int MotorStart (void) {
 int MotorStop (MotorStruct *Motor) {
 /* A faire! */
 /* Ici, vous devriez arrêter les moteurs et fermer le Port des moteurs. */
-//	détruire la tâche et les mécanismes de synchro
-	//	Voir MavLink* et Attitude* pour exemple
+/* Détruire la tâche et les mécanismes de synchronisation */
+
 	int err;
 
 	MotorActivated = 0;

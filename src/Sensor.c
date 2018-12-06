@@ -2,7 +2,7 @@
  * Sensor.c
  *
  *  Created on: 12 sept. 2013
- *      Author: Gabriel Piché Cloutier, Francis Jeanneau
+ *  Author: Gabriel Piché Cloutier, Francis Jeanneau
  *
  */
 
@@ -185,17 +185,10 @@ void *SensorTask ( void *ptr ) {
 				memcpy((void *) &(sensor_struct->RawData[DataIdx[1]]), (void *) &(sensor_raw_data_temp), sizeof(sensor_raw_data_temp));
 			}
 
-			// Pour printer
-//			if (j > 200) {
-//				printf("Valeur de l'index du sensor %s : %d\n",  sensor_struct->Name, sensor_struct->DataIdx);
-//				printf("Valeur du sensor %s en x : %lf, en y : %lf, en z : %lf\n", sensor_struct->Name, sensor_struct->Data->Data[0], sensor_struct->Data->Data[1], sensor_struct->Data->Data[2]);
-//				j = 0;
-//			}
-//			j++;
-
 			pthread_cond_broadcast(&(sensor_struct->DataNewSampleCondVar));
 			pthread_spin_unlock(&(sensor_struct->DataLock));
 			pthread_mutex_unlock(&(sensor_struct->DataSampleMutex));
+
 		} else {
 			// La structure n'a pas été copiée en entier
 			printf("%s Echec de la lecture du capteur\n", __FUNCTION__);

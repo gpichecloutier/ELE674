@@ -2,7 +2,7 @@
  * Sensor.h
  *
  *  Created on: 19 déc. 2012
- *      Author: bruno
+ *  Author: Gabriel Piché Cloutier, Francis Jeanneau, bruno
  */
 
 #ifndef SENSOR_H_
