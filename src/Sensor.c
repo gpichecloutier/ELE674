@@ -61,64 +61,69 @@ void *SensorTask ( void *ptr ) {
 			// Conversion du RawData en Data
 			switch (sensor_raw_data_temp.type) {
 			case ACCELEROMETRE :	for (i = 0; i < 3; i++) {
-										if (sensor_raw_data_temp.data[i] < param->minVal || sensor_raw_data_temp.data[i] > param->maxVal) {
+										// Application de la conversion
+										sensor_data_converti.Data[i] = (((double) sensor_raw_data_temp.data[i] - param->centerVal) * param->Conversion);
+									}
+
+									// Application de la calibration
+									for (i = 0; i < 3; i++) {
+										sensor_data_calibre.Data[i] = 0;
+
+										for (j = 0; j < 3; j++)
+											sensor_data_calibre.Data[i] += (sensor_param_temp->alpha[i][j] * sensor_data_converti.Data[j]);
+
+										sensor_data_calibre.Data[i] += sensor_param_temp->beta[i];
+
+										if ((sensor_data_calibre.Data[i] < param->minVal) || (sensor_data_calibre.Data[i] > param->maxVal)) {
 											donnee_invalide = 1;
 											break;
-										} else {
-											// Application de la conversion
-											sensor_data_converti.Data[i] = ((sensor_raw_data_temp.data[i] - param->centerVal) * param->Conversion);
-
-											sensor_data_calibre.Data[i] = 0;
-
-											// Application de la calibration
-											for (j = 0; j < 3; j++)
-												sensor_data_calibre.Data[i] += (sensor_param_temp->alpha[i][j] * sensor_data_converti.Data[j]);
-
-											sensor_data_calibre.Data[i] += sensor_param_temp->beta[i];
 										}
 									}
+
 									break;
 
 			case GYROSCOPE :
-//									printf("Gyro: %d\n", sensor_raw_data_temp.data[0]);
 									for (i = 0; i < 3; i++) {
-										if (sensor_raw_data_temp.data[i] < param->minVal || sensor_raw_data_temp.data[i] > param->maxVal) {
+										// Application de la conversion
+										sensor_data_converti.Data[i] = (((double)sensor_raw_data_temp.data[i] - param->centerVal) * param->Conversion);
+									}
+
+									// Application de la calibration
+									for (i = 0; i < 3; i++) {
+										sensor_data_calibre.Data[i] = 0;
+
+										for (j = 0; j < 3; j++)
+											sensor_data_calibre.Data[i] += (sensor_param_temp->alpha[i][j] * sensor_data_converti.Data[j]);
+
+										sensor_data_calibre.Data[i] += sensor_param_temp->beta[i];
+
+										if ((sensor_data_calibre.Data[i] < param->minVal) || (sensor_data_calibre.Data[i] > param->maxVal)) {
 											donnee_invalide = 1;
-											printf("Donnée invalide: %d\n", sensor_raw_data_temp.data[i]);
 											break;
-										} else {
-											// Application de la conversion
-											sensor_data_converti.Data[i] = ((sensor_raw_data_temp.data[i] - param->centerVal) * param->Conversion);
-
-											sensor_data_calibre.Data[i] = 0;
-
-											// Application de la calibration
-											for (j = 0; j < 3; j++)
-												sensor_data_calibre.Data[i] += (sensor_param_temp->alpha[i][j] * sensor_data_converti.Data[j]);
-
-											sensor_data_calibre.Data[i] += sensor_param_temp->beta[i];
 										}
 									}
 
+
+
 									break;
 
-			case SONAR :			if (sensor_raw_data_temp.data[0] < param->minVal || sensor_raw_data_temp.data[0] > param->maxVal)
+			case SONAR :
+									sensor_data_converti.Data[0] = (((double) sensor_raw_data_temp.data[0] - param->centerVal) * param->Conversion);
+
+									sensor_data_calibre.Data[0] = 0;
+
+									// Application de la calibration
+									for (j = 0; j < 3; j++)
+										sensor_data_calibre.Data[0] += (sensor_param_temp->alpha[0][j] * sensor_data_converti.Data[j]);
+
+									sensor_data_calibre.Data[0] += sensor_param_temp->beta[0];
+
+									if ((sensor_data_calibre.Data[0] < param->minVal) || (sensor_data_calibre.Data[0] > param->maxVal))
 										donnee_invalide = 1;
-									else {
-										sensor_data_converti.Data[0] = ((sensor_raw_data_temp.data[0] - param->centerVal) * param->Conversion);
-
-										sensor_data_calibre.Data[0] = 0;
-
-										// Application de la calibration
-										for (j = 0; j < 3; j++)
-											sensor_data_calibre.Data[0] += (sensor_param_temp->alpha[0][j] * sensor_data_converti.Data[j]);
-
-										sensor_data_calibre.Data[0] += sensor_param_temp->beta[0];
-									}
 
 									break;
 
-			case BAROMETRE :		sensor_data_converti.Data[0] = ((sensor_raw_data_temp.data[0] - param->centerVal) * param->Conversion);
+			case BAROMETRE :		sensor_data_converti.Data[0] = (((double)sensor_raw_data_temp.data[0] - param->centerVal) * param->Conversion);
 
 									sensor_data_calibre.Data[0] = 0;
 
@@ -131,23 +136,26 @@ void *SensorTask ( void *ptr ) {
 									break;
 
 			case MAGNETOMETRE :		for (i = 0; i < 3; i++) {
-										if (sensor_raw_data_temp.data[i] < param->minVal || sensor_raw_data_temp.data[i] > param->maxVal) {
+										// Application de la conversion
+										sensor_data_converti.Data[i] = (((double) sensor_raw_data_temp.data[i] - param->centerVal) * param->Conversion);
+									}
+
+									// Application de la calibration
+									for (i = 0; i < 3; i++) {
+										sensor_data_calibre.Data[i] = 0;
+
+										for (j = 0; j < 3; j++)
+											sensor_data_calibre.Data[i] += (sensor_param_temp->alpha[i][j] * sensor_data_converti.Data[j]);
+
+										sensor_data_calibre.Data[i] += sensor_param_temp->beta[i];
+
+										if ((sensor_data_calibre.Data[i] < param->minVal) || (sensor_data_calibre.Data[i] > param->maxVal)) {
 											donnee_invalide = 1;
+											printf("Donnée invalide MAGN: %lf\n", sensor_data_calibre.Data[i]);
 											break;
 										}
-										else {
-											// Application de la conversion
-											sensor_data_converti.Data[i] = ((sensor_raw_data_temp.data[i] - param->centerVal) * param->Conversion);
-
-											sensor_data_calibre.Data[i] = 0;
-
-											// Application de la calibration
-											for (j = 0; j < 3; j++)
-												sensor_data_calibre.Data[i] += (sensor_param_temp->alpha[i][j] * sensor_data_converti.Data[j]);
-
-											sensor_data_calibre.Data[i] += sensor_param_temp->beta[i];
-										}
 									}
+
 									break;
 			}
 
@@ -167,6 +175,7 @@ void *SensorTask ( void *ptr ) {
 
 			if (donnee_invalide) {
 				// 2. Copier les données précédentes
+				memcpy((void *) &(sensor_struct->Data[DataIdx[1]].TimeDelay),    (void *) &(sensor_data_calibre.TimeDelay),  sizeof(sensor_data_calibre.TimeDelay));
 				memcpy((void *) &(sensor_struct->Data[DataIdx[1]]),    (void *) &(sensor_struct->Data[DataIdx[0]]),  sizeof(sensor_data_calibre));
 				memcpy((void *) &(sensor_struct->RawData[DataIdx[1]]), (void *) &(sensor_struct->RawData[DataIdx[0]]), sizeof(sensor_raw_data_temp));
 

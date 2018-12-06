@@ -235,34 +235,35 @@ int main(int argc, char *argv[]) {
 	printf("%s Tout démarré\n", __FUNCTION__);
 
 	ch = 0;
-	while (ch != 'q') {
-
-		sem_wait(&MainTimerSem);
-
-		ch = tolower(getchar_nonblock());
-
-		// À faire pour tester les moteurs avec le clavier.
-		pthread_spin_lock(&(Motor.MotorLock));
-
-		switch (ch){
-		case '+':
-			if (Motor.pwm[1] < 500) {
-				Motor.pwm[0] += 50;
-				Motor.pwm[1] += 50;
-				Motor.pwm[2] += 50;
-				Motor.pwm[3] += 50;
-			}
-			break;
-		case '-':
-			if (Motor.pwm[1] > 0) {
-				Motor.pwm[0] -= 50;
-				Motor.pwm[1] -= 50;
-				Motor.pwm[2] -= 50;
-				Motor.pwm[3] -= 50;
-			}
-		}
-		pthread_spin_unlock(&(Motor.MotorLock));
-	}
+	while (1);
+//	{
+//
+//		sem_wait(&MainTimerSem);
+//
+//		ch = tolower(getchar_nonblock());
+//
+//		// À faire pour tester les moteurs avec le clavier.
+//		pthread_spin_lock(&(Motor.MotorLock));
+//
+//		switch (ch){
+//		case '+':
+//			if (Motor.pwm[1] < 500) {
+//				Motor.pwm[0] += 50;
+//				Motor.pwm[1] += 50;
+//				Motor.pwm[2] += 50;
+//				Motor.pwm[3] += 50;
+//			}
+//			break;
+//		case '-':
+//			if (Motor.pwm[1] > 0) {
+//				Motor.pwm[0] -= 50;
+//				Motor.pwm[1] -= 50;
+//				Motor.pwm[2] -= 50;
+//				Motor.pwm[3] -= 50;
+//			}
+//		}
+//		pthread_spin_unlock(&(Motor.MotorLock));
+//	}
 
 	MavlinkStop(&Mavlink);
 

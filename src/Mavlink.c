@@ -126,6 +126,7 @@ void *MavlinkReceiveTask(void *ptr) {
 				Speed.Roll	    = (Roll - Data.Roll)/TS;
 				Speed.Yaw	    = (Yaw - Data.Yaw)/TS;
 				Speed.Elevation = (Elevation - Data.Elevation)/TS;
+//				printf("Dans MavlinkReceive. Speed.Elevation: %lf\n", Speed.Elevation);
 				Data.Pitch	    = Pitch;
 				Data.Roll	    = Roll;
 				Data.Yaw	    = Yaw;
